@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "Mission": {
+      "title": "Mission",
+      "description": "A user's sleep/wake mission record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "sleepAt": { "type": "string", "format": "date-time" },
+        "wakeupAt": { "type": "string", "format": "date-time" },
+        "missionType": { "type": "string" },
+        "intensity": { "type": "string" },
+        "durationHours": { "type": "number" },
+        "score": { "type": "number" },
+        "aiFeedback": { "type": "string" }
+      },
+      "required": ["userId", "createdAt", "sleepAt", "wakeupAt"]
+    },
+    "Alarm": {
+      "title": "Alarm",
+      "description": "A user's alarm setting",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "time": { "type": "string" },
+        "label": { "type": "string" },
+        "days": { "type": "array", "items": { "type": "string" } },
+        "isEnabled": { "type": "boolean" },
+        "missionType": { "type": "string", "enum": ["step", "math", "shake", "puzzle"] },
+        "intensity": { "type": "string", "enum": ["low", "medium", "high"] },
+        "volume": { "type": "number" },
+        "isStormAlarm": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "time", "days", "isEnabled", "missionType", "intensity", "volume", "isStormAlarm", "createdAt"]
+    },
+    "SleepSession": {
+      "title": "SleepSession",
+      "description": "A record of a user's sleep from start to end",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "durationHours": { "type": "number" },
+        "score": { "type": "number" },
+        "aiFeedback": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "startTime", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/missions/{missionId}": {
+      "schema": "Mission",
+      "description": "Stores user missions"
+    },
+    "/alarms/{alarmId}": {
+      "schema": "Alarm",
+      "description": "Stores user alarm settings"
+    },
+    "/sleep_sessions/{sessionId}": {
+      "schema": "SleepSession",
+      "description": "Stores user sleep sessions"
+    }
+  }
+}

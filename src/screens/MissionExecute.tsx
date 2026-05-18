@@ -17,6 +17,7 @@ import { generateSleepFeedback } from '../services/gemini';
 import { db, auth } from '../lib/firebase';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
+import { alarmAudio } from '../lib/audio';
 
 interface MissionExecuteProps {
   onNavigate: (screen: Screen) => void;
@@ -75,6 +76,16 @@ export default function MissionExecute({
     }
     return { problems, solutions };
   };
+
+  useEffect(() => {
+    // Start alarm sound
+    alarmAudio.start(volume, isStormAlarm);
+    
+    return () => {
+      // Stop alarm sound when component unmounts or mission finishes
+      alarmAudio.stop();
+    };
+  }, [volume, isStormAlarm]);
 
   useEffect(() => {
     // intensityに基づいてtargetValueを設定

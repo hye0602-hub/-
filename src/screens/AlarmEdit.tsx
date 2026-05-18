@@ -6,13 +6,16 @@ import {
   CheckSquare, 
   ChevronRight, 
   Smile,
-  Loader2
+  Loader2,
+  Play,
+  Square
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { Screen } from '../App';
 import { BottomNav } from '../components/BottomNav';
 import { createAlarm } from '../lib/alarms';
 import { cn } from '../lib/utils';
+import { alarmAudio } from '../lib/audio';
 
 interface AlarmEditProps {
   onNavigate: (screen: Screen) => void;
@@ -25,8 +28,9 @@ export default function AlarmEdit({ onNavigate, onNext }: AlarmEditProps) {
   const [selectedDays, setSelectedDays] = useState<string[]>(['화', '수', '목', '금']);
   const [label, setLabel] = useState("기상 알람");
   const [volume, setVolume] = useState(85);
-  const [isStormAlarm, setIsStormAlarm] = useState(true);
+  const [isStormAlarm, setIsStormAlarm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isTestPlaying, setIsTestPlaying] = useState(false);
 
   const hourScrollRef = useRef<HTMLDivElement>(null);
   const minuteScrollRef = useRef<HTMLDivElement>(null);
@@ -38,6 +42,10 @@ export default function AlarmEdit({ onNavigate, onNext }: AlarmEditProps) {
     // Initial scroll sync
     if (hourScrollRef.current) hourScrollRef.current.scrollTop = selectedHour * 64;
     if (minuteScrollRef.current) minuteScrollRef.current.scrollTop = selectedMinute * 64;
+
+    return () => {
+        alarmAudio.stop();
+    };
   }, []);
 
   const dayOptions = ['일', '월', '화', '수', '목', '금', '토'];
@@ -187,7 +195,26 @@ export default function AlarmEdit({ onNavigate, onNext }: AlarmEditProps) {
                   <Volume2 className="text-tertiary w-5 h-5" />
                   알람 볼륨
                 </label>
-                <span className="text-tertiary font-bold">{volume}%</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-tertiary font-bold">{volume}%</span>
+                  <button 
+                    onClick={() => {
+                        if (isTestPlaying) {
+                            alarmAudio.stop();
+                            setIsTestPlaying(false);
+                        } else {
+                            alarmAudio.start(volume, isStormAlarm);
+                            setIsTestPlaying(true);
+                        }
+                    }}
+                    className={cn(
+                        "p-2 rounded-full transition-all bouncy",
+                        isTestPlaying ? "bg-error/10 text-error" : "bg-primary/10 text-primary"
+                    )}
+                  >
+                    {isTestPlaying ? <Square className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
+                  </button>
+                </div>
               </div>
               <div className="relative h-4 bg-tertiary-fixed rounded-full">
                 <input 
@@ -207,6 +234,9 @@ export default function AlarmEdit({ onNavigate, onNext }: AlarmEditProps) {
                   style={{ left: `${volume}%` }}
                 ></div>
               </div>
+              <p className="text-[10px] text-error font-medium flex items-center gap-1 mt-2">
+                ⚠️ 알람 볼륨 설정할 때 소리가 크니 주의해 주세요!
+              </p>
             </div>
 
             <div className="flex justify-between items-center bg-white/50 p-4 rounded-full border border-outline-variant/30">

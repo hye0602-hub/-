@@ -12,7 +12,7 @@ import {
 import { useState } from 'react';
 import { Screen, MissionType, PendingAlarm } from '../App';
 import { BottomNav } from '../components/BottomNav';
-import { createAlarm } from '../lib/alarms';
+import { createAlarm, updateAlarm } from '../lib/alarms';
 import { cn } from '../lib/utils';
 
 interface MissionSelectProps {
@@ -23,9 +23,10 @@ interface MissionSelectProps {
   onStartPreview: (mission: MissionType) => void;
   intensity: 'low' | 'medium' | 'high';
   setIntensity: (intensity: 'low' | 'medium' | 'high') => void;
+  editingAlarmId?: string;
 }
 
-export default function MissionSelect({ onNavigate, selectedMission, onSelectMission, pendingAlarm, onStartPreview, intensity, setIntensity }: MissionSelectProps) {
+export default function MissionSelect({ onNavigate, selectedMission, onSelectMission, pendingAlarm, onStartPreview, intensity, setIntensity, editingAlarmId }: MissionSelectProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,16 +40,30 @@ export default function MissionSelect({ onNavigate, selectedMission, onSelectMis
     setIsSaving(true);
     setError(null);
     try {
-      await createAlarm(
-        pendingAlarm.time, 
-        pendingAlarm.days, 
-        pendingAlarm.label, 
-        selectedMission, 
-        intensity,
-        pendingAlarm.volume,
-        pendingAlarm.isStormAlarm,
-        pendingAlarm.date
-      );
+      if (editingAlarmId) {
+        await updateAlarm(
+          editingAlarmId,
+          pendingAlarm.time, 
+          pendingAlarm.days, 
+          pendingAlarm.label, 
+          selectedMission, 
+          intensity,
+          pendingAlarm.volume,
+          pendingAlarm.isStormAlarm,
+          pendingAlarm.date
+        );
+      } else {
+        await createAlarm(
+          pendingAlarm.time, 
+          pendingAlarm.days, 
+          pendingAlarm.label, 
+          selectedMission, 
+          intensity,
+          pendingAlarm.volume,
+          pendingAlarm.isStormAlarm,
+          pendingAlarm.date
+        );
+      }
       onNavigate('dashboard');
     } catch (saveError) {
       console.error("Failed to save alarm:", saveError);

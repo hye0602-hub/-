@@ -445,6 +445,15 @@ export default function MissionExecute({
             )}
             {isSaving ? "저장 중..." : progressValue >= targetValue ? "☀️ 기상하기" : getProgressLabel()}
           </button>
+          
+          {isPreview && (
+            <button 
+              onClick={() => onNavigate('mission-select')}
+              className="w-full py-4 rounded-full font-bold text-lg text-primary bg-surface-container hover:bg-primary/10 transition-colors mt-2"
+            >
+              미리보기 건너뛰기
+            </button>
+          )}
         </div>
       </main>
 

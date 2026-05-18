@@ -28,6 +28,7 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard');
   const [selectedMission, setSelectedMission] = useState<MissionType>('step');
   const [pendingAlarm, setPendingAlarm] = useState<PendingAlarm | null>(null);
+  const [editingAlarm, setEditingAlarm] = useState<AlarmData | null>(null);
   const [intensity, setIntensity] = useState<'low' | 'medium' | 'high'>('medium');
   const { user, loading } = useAuth();
   
@@ -120,11 +121,23 @@ function AppContent() {
     // We keep pendingAlarm if it exists for preview settings, but MissionExecute needs to know
   };
 
+  const handleEditAlarm = (alarm: AlarmData) => {
+    setEditingAlarm(alarm);
+    setCurrentScreen('alarm-edit');
+  };
+
+  const handleNavigate = (screen: Screen) => {
+    if (screen === 'alarm-edit') {
+      setEditingAlarm(null); // Clear editing state when normally navigating to add new
+    }
+    setCurrentScreen(screen);
+  };
+
   return (
     <div className="bg-background text-on-background min-h-screen">
-      {currentScreen === 'dashboard' && <Dashboard onNavigate={setCurrentScreen} />}
-      {currentScreen === 'alarm-edit' && <AlarmEdit onNavigate={setCurrentScreen} onNext={handleNextFromAlarmEdit} />}
-      {currentScreen === 'mission-select' && <MissionSelect onNavigate={setCurrentScreen} selectedMission={selectedMission} onSelectMission={setSelectedMission} pendingAlarm={pendingAlarm} onStartPreview={handleStartPreview} intensity={intensity} setIntensity={setIntensity} />}
+      {currentScreen === 'dashboard' && <Dashboard onNavigate={handleNavigate} onEditAlarm={handleEditAlarm} />}
+      {currentScreen === 'alarm-edit' && <AlarmEdit onNavigate={handleNavigate} onNext={handleNextFromAlarmEdit} editingAlarm={editingAlarm} />}
+      {currentScreen === 'mission-select' && <MissionSelect onNavigate={handleNavigate} selectedMission={selectedMission} onSelectMission={setSelectedMission} pendingAlarm={pendingAlarm} onStartPreview={handleStartPreview} intensity={intensity} setIntensity={setIntensity} editingAlarmId={editingAlarm?.id} />}
       {currentScreen === 'mission-execute' && (
         <MissionExecute 
           onNavigate={setCurrentScreen} 

@@ -14,24 +14,34 @@ import {
 import { useState, useRef, useEffect } from 'react';
 import { Screen } from '../App';
 import { BottomNav } from '../components/BottomNav';
-import { createAlarm } from '../lib/alarms';
+import { createAlarm, AlarmData } from '../lib/alarms';
 import { cn } from '../lib/utils';
 import { alarmAudio } from '../lib/audio';
 
 interface AlarmEditProps {
   onNavigate: (screen: Screen) => void;
   onNext: (alarmData: { time: string, days: string[], date?: string, label: string, volume: number, isStormAlarm: boolean }) => void;
+  editingAlarm?: AlarmData | null;
 }
 
-export default function AlarmEdit({ onNavigate, onNext }: AlarmEditProps) {
-  const [selectedHour, setSelectedHour] = useState(8);
-  const [selectedMinute, setSelectedMinute] = useState(30);
-  const [selectedDays, setSelectedDays] = useState<string[]>(['화', '수', '목', '금']);
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [isRecurring, setIsRecurring] = useState(true);
-  const [label, setLabel] = useState("기상 알람");
-  const [volume, setVolume] = useState(10);
-  const [isStormAlarm, setIsStormAlarm] = useState(false);
+export default function AlarmEdit({ onNavigate, onNext, editingAlarm }: AlarmEditProps) {
+  const parseInitialTime = () => {
+    if (editingAlarm?.time) {
+      const [h, m] = editingAlarm.time.split(':');
+      return { h: parseInt(h, 10), m: parseInt(m, 10) };
+    }
+    return { h: 8, m: 30 };
+  };
+
+  const initialTime = parseInitialTime();
+  const [selectedHour, setSelectedHour] = useState(initialTime.h);
+  const [selectedMinute, setSelectedMinute] = useState(initialTime.m);
+  const [selectedDays, setSelectedDays] = useState<string[]>(editingAlarm?.days || ['화', '수', '목', '금']);
+  const [selectedDate, setSelectedDate] = useState<string>(editingAlarm?.date || '');
+  const [isRecurring, setIsRecurring] = useState(editingAlarm?.date ? false : true);
+  const [label, setLabel] = useState(editingAlarm?.label || "기상 알람");
+  const [volume, setVolume] = useState(editingAlarm ? editingAlarm.volume : 10);
+  const [isStormAlarm, setIsStormAlarm] = useState(editingAlarm ? editingAlarm.isStormAlarm : false);
   const [error, setError] = useState<string | null>(null);
   const [isTestPlaying, setIsTestPlaying] = useState(false);
 

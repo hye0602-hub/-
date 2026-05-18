@@ -8,6 +8,7 @@ import {
   ChevronRight,
   LogOut,
   Trash2,
+  Pencil,
   Loader2,
   BellOff,
   Sparkles,
@@ -17,7 +18,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState, useEffect, useCallback } from 'react';
-import { Screen } from '../App';
+import { Screen, PendingAlarm } from '../App';
 import { BottomNav } from '../components/BottomNav';
 import { useAuth } from '../lib/AuthContext';
 import { getAlarms, deleteAlarm, toggleAlarm, createAlarm, AlarmData } from '../lib/alarms';
@@ -43,9 +44,10 @@ import {
 
 interface DashboardProps {
   onNavigate: (screen: Screen) => void;
+  onEditAlarm?: (alarm: AlarmData) => void;
 }
 
-export default function Dashboard({ onNavigate }: DashboardProps) {
+export default function Dashboard({ onNavigate, onEditAlarm }: DashboardProps) {
   const { signOut, user } = useAuth();
   const [alarms, setAlarms] = useState<AlarmData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -310,23 +312,45 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                                 : "사용자 지정"}
                       </span>
                     </div>
-                    <p className="text-xs text-on-surface-variant font-medium">{alarm.label || "알람"}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-on-surface-variant font-medium">{alarm.label || "알람"}</p>
+                      <span className="w-1 h-1 bg-on-surface-variant rounded-full opacity-50"></span>
+                      <p className="text-xs font-bold text-primary">
+                        {alarm.missionType === 'step' ? '걷기' : 
+                         alarm.missionType === 'math' ? '수학' : 
+                         alarm.missionType === 'shake' ? '흔들기' : 
+                         alarm.missionType === 'puzzle' ? '두더지 잡기' : '기상'} 미션
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <motion.button 
-                      whileHover={{ 
-                        x: (Math.random() - 0.5) * 8, 
-                        y: (Math.random() - 0.5) * 8,
-                        scale: 1.1
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        alarm.id && setDeleteId(alarm.id);
-                      }}
-                      className="p-2 text-on-surface-variant hover:text-error hover:bg-error-container/20 rounded-full transition-all opacity-40 group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </motion.button>
+                    <div className="flex gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                      {onEditAlarm && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditAlarm(alarm);
+                          }}
+                          className="p-2 text-on-surface-variant hover:text-primary hover:bg-primary-container/20 rounded-full transition-all"
+                        >
+                          <Pencil className="w-5 h-5" />
+                        </button>
+                      )}
+                      <motion.button 
+                        whileHover={{ 
+                          x: (Math.random() - 0.5) * 8, 
+                          y: (Math.random() - 0.5) * 8,
+                          scale: 1.1
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          alarm.id && setDeleteId(alarm.id);
+                        }}
+                        className="p-2 text-on-surface-variant hover:text-error hover:bg-error-container/20 rounded-full transition-all"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </motion.button>
+                    </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 

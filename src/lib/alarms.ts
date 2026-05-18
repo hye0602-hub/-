@@ -78,6 +78,37 @@ export async function toggleAlarm(alarmId: string, isEnabled: boolean) {
   }
 }
 
+export async function updateAlarm(
+  alarmId: string,
+  time: string, 
+  days: string[], 
+  label: string | undefined, 
+  missionType: string, 
+  intensity: 'low' | 'medium' | 'high',
+  volume: number = 10,
+  isStormAlarm: boolean = false,
+  date?: string
+) {
+  if (!auth.currentUser) throw new Error("Not authenticated");
+  
+  try {
+    const alarmRef = doc(db, 'alarms', alarmId);
+    const data = {
+      time,
+      days,
+      date: date || null,
+      label: label || "",
+      missionType,
+      intensity,
+      volume,
+      isStormAlarm
+    };
+    await updateDoc(alarmRef, data);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `alarms/${alarmId}`);
+  }
+}
+
 export async function deleteAlarm(alarmId: string) {
   if (!auth.currentUser) throw new Error("Not authenticated");
   

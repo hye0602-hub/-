@@ -7,6 +7,7 @@ export interface AlarmData {
   time: string;
   label?: string;
   days: string[];
+  date?: string;
   isEnabled: boolean;
   missionType: string;
   intensity: 'low' | 'medium' | 'high';
@@ -21,8 +22,9 @@ export async function createAlarm(
   label: string | undefined, 
   missionType: string, 
   intensity: 'low' | 'medium' | 'high',
-  volume: number = 85,
-  isStormAlarm: boolean = false
+  volume: number = 10,
+  isStormAlarm: boolean = false,
+  date?: string
 ) {
   if (!auth.currentUser) throw new Error("Not authenticated");
   
@@ -33,6 +35,7 @@ export async function createAlarm(
       userId: auth.currentUser.uid,
       time,
       days,
+      date: date || null,
       label: label || "",
       isEnabled: true,
       missionType,

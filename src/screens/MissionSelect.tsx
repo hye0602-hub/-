@@ -46,7 +46,8 @@ export default function MissionSelect({ onNavigate, selectedMission, onSelectMis
         selectedMission, 
         intensity,
         pendingAlarm.volume,
-        pendingAlarm.isStormAlarm
+        pendingAlarm.isStormAlarm,
+        pendingAlarm.date
       );
       onNavigate('dashboard');
     } catch (saveError) {

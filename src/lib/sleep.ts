@@ -46,6 +46,29 @@ export async function startSleep(): Promise<string> {
   }
 }
 
+export async function createCompletedSleepSession(startTime: Date, endTime: Date, aiFeedback: string): Promise<string> {
+  if (!auth.currentUser) throw new Error("Authentication required");
+  
+  try {
+    const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+    const score = Math.min(100, Math.round((durationHours / 8) * 100));
+    
+    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+      userId: auth.currentUser.uid,
+      startTime: Timestamp.fromDate(startTime),
+      endTime: Timestamp.fromDate(endTime),
+      createdAt: serverTimestamp(),
+      durationHours,
+      score,
+      aiFeedback
+    });
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, COLLECTION_NAME);
+    return "";
+  }
+}
+
 export async function endSleep(sessionId: string, aiFeedback: string): Promise<void> {
   if (!auth.currentUser) throw new Error("Authentication required");
   

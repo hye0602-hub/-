@@ -7,12 +7,13 @@ import {
   Loader2,
   Calculator,
   Smartphone,
-  ChevronLeft
+  ChevronLeft,
+  Play
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Screen, MissionType } from '../App';
 import { createMission } from '../lib/missions';
-import { getActiveSession, endSleep } from '../lib/sleep';
+import { getActiveSession, endSleep, createCompletedSleepSession } from '../lib/sleep';
 import { generateSleepFeedback } from '../services/gemini';
 import { db, auth } from '../lib/firebase';
 import { format } from 'date-fns';
@@ -33,7 +34,7 @@ export default function MissionExecute({
   missionType, 
   intensity, 
   isPreview = false,
-  volume = 85,
+  volume = 10,
   isStormAlarm = false
 }: MissionExecuteProps) {
   const [progressValue, setProgressValue] = useState(0);
@@ -43,6 +44,10 @@ export default function MissionExecute({
   const [mathProblems, setMathProblems] = useState<string[]>([]);
   const [mathSolutions, setMathSolutions] = useState<string[]>([]);
   const [molePosition, setMolePosition] = useState<number | null>(null);
+  
+  const [motionStarted, setMotionStarted] = useState(false);
+  const [permissionError, setPermissionError] = useState('');
+  const lastTimeRef = useRef(0);
 
   const generateMathProblems = (count: number, intensity: 'low' | 'medium' | 'high') => {
     const problems = [];
@@ -124,14 +129,56 @@ export default function MissionExecute({
 
     if (missionType === 'step' || missionType === 'shake') {
       setProgressValue(0);
-      const timer = setInterval(() => {
-        setProgressValue(prev => Math.min(prev + 1, baseValue));
-      }, missionType === 'step' ? 1000 : 500); // Shaking is faster
-      return () => clearInterval(timer);
+      
+      if (!motionStarted) return; // Wait until started
+
+      const threshold = missionType === 'step' ? 12 : 18;
+      const debounceDelay = missionType === 'step' ? 300 : 150;
+      
+      const handleMotion = (event: DeviceMotionEvent) => {
+        if (!event.acceleration) return;
+        const { x, y, z } = event.acceleration;
+        if (x === null || y === null || z === null) return;
+        
+        const acceleration = Math.sqrt(x*x + y*y + z*z);
+        const now = Date.now();
+        
+        if (acceleration > threshold && (now - lastTimeRef.current) > debounceDelay) {
+          lastTimeRef.current = now;
+          setProgressValue(prev => {
+            const next = Math.min(prev + 1, baseValue);
+            return next;
+          });
+        }
+      };
+
+      window.addEventListener('devicemotion', handleMotion);
+      return () => {
+        window.removeEventListener('devicemotion', handleMotion);
+      };
     } else if (missionType === 'math' || missionType === 'puzzle') {
       setProgressValue(0);
     }
-  }, [missionType, intensity]);
+  }, [missionType, intensity, motionStarted]);
+
+  const startMotionSensor = async () => {
+    if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
+      try {
+        const permissionState = await (DeviceMotionEvent as any).requestPermission();
+        if (permissionState === 'granted') {
+          setMotionStarted(true);
+        } else {
+          setPermissionError("센서 권한이 거부되었습니다.");
+        }
+      } catch (e) {
+        console.error(e);
+        setPermissionError("센서 권한을 요청할 수 없습니다.");
+      }
+    } else {
+      // Non-iOS devices
+      setMotionStarted(true);
+    }
+  };
 
   useEffect(() => {
     if (missionType === 'math') {
@@ -172,7 +219,17 @@ export default function MissionExecute({
         // Use the calculated values for mission history
         await createMission(sleepAtStr, wakeupTime, missionType, intensity, durationHours, score, feedback);
       } else {
-        await createMission(sleepAtStr, wakeupTime, missionType, intensity);
+        // Assume 7 hours of sleep if there is no active session
+        const durationHours = 7;
+        const score = Math.min(100, Math.round((durationHours / 8) * 100));
+        
+        const feedback = await generateSleepFeedback(durationHours, score);
+        
+        // Formulate exactly 7 hours prior 
+        const startTime = new Date(now.getTime() - 7 * 60 * 60 * 1000);
+        await createCompletedSleepSession(startTime, now, feedback);
+        
+        await createMission(sleepAtStr, wakeupTime, missionType, intensity, durationHours, score, feedback);
       }
       onNavigate('dashboard');
     } catch (error) {
@@ -236,6 +293,25 @@ export default function MissionExecute({
             </div>
         </div>
        )
+    }
+    
+    if ((missionType === 'step' || missionType === 'shake') && !motionStarted) {
+      return (
+        <div className="w-full flex items-center justify-center py-12">
+          <button 
+            onClick={startMotionSensor}
+            className="bg-primary text-on-primary py-4 px-8 rounded-full font-bold shadow-lg shadow-primary/30 flex items-center gap-2 hover:scale-105 transition-all w-full text-center justify-center max-w-sm"
+          >
+            <Play className="w-6 h-6" />
+            <span>임무 시작하기</span>
+          </button>
+          {permissionError && (
+            <p className="absolute text-error font-medium mt-16 text-center w-full">
+              {permissionError}
+            </p>
+          )}
+        </div>
+      );
     }
 
     // Circular progress for other missions

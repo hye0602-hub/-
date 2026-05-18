@@ -36,7 +36,9 @@ service cloud.firestore {
              data.intensity is string &&
              data.volume is number &&
              data.isStormAlarm is bool &&
-             data.createdAt is timestamp;
+             data.createdAt is timestamp &&
+             (!('label' in data) || data.label is string) &&
+             (!('date' in data) || data.date is string || data.date == null);
     }
 
     function isValidSleepSession(data) {

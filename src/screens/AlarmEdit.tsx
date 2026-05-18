@@ -8,7 +8,8 @@ import {
   Smile,
   Loader2,
   Play,
-  Square
+  Square,
+  Calendar
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { Screen } from '../App';
@@ -19,15 +20,17 @@ import { alarmAudio } from '../lib/audio';
 
 interface AlarmEditProps {
   onNavigate: (screen: Screen) => void;
-  onNext: (alarmData: { time: string, days: string[], label: string, volume: number, isStormAlarm: boolean }) => void;
+  onNext: (alarmData: { time: string, days: string[], date?: string, label: string, volume: number, isStormAlarm: boolean }) => void;
 }
 
 export default function AlarmEdit({ onNavigate, onNext }: AlarmEditProps) {
   const [selectedHour, setSelectedHour] = useState(8);
   const [selectedMinute, setSelectedMinute] = useState(30);
   const [selectedDays, setSelectedDays] = useState<string[]>(['화', '수', '목', '금']);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [isRecurring, setIsRecurring] = useState(true);
   const [label, setLabel] = useState("기상 알람");
-  const [volume, setVolume] = useState(85);
+  const [volume, setVolume] = useState(10);
   const [isStormAlarm, setIsStormAlarm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isTestPlaying, setIsTestPlaying] = useState(false);
@@ -48,6 +51,20 @@ export default function AlarmEdit({ onNavigate, onNext }: AlarmEditProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (isTestPlaying) {
+      // If storm mode changes, we need to restart the audio to change oscillator type
+      alarmAudio.stop();
+      alarmAudio.start(volume, isStormAlarm);
+    }
+  }, [isStormAlarm]);
+
+  useEffect(() => {
+    if (isTestPlaying) {
+      alarmAudio.setVolume(volume);
+    }
+  }, [volume, isTestPlaying]);
+
   const dayOptions = ['일', '월', '화', '수', '목', '금', '토'];
 
   const handleDayToggle = (day: string) => {
@@ -62,13 +79,26 @@ export default function AlarmEdit({ onNavigate, onNext }: AlarmEditProps) {
       setError("알람 이름을 입력해주세요.");
       return;
     }
-    if (selectedDays.length === 0) {
+    
+    if (isRecurring && selectedDays.length === 0) {
       setError("최소 하루 이상의 반복 요일을 선택해주세요.");
       return;
     }
 
+    if (!isRecurring && !selectedDate) {
+      setError("알람 날짜를 선택해주세요.");
+      return;
+    }
+
     const timeStr = `${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}`;
-    onNext({ time: timeStr, days: selectedDays, label, volume, isStormAlarm });
+    onNext({ 
+      time: timeStr, 
+      days: isRecurring ? selectedDays : [], 
+      date: isRecurring ? undefined : selectedDate,
+      label, 
+      volume, 
+      isStormAlarm 
+    });
   };
 
   return (
@@ -157,23 +187,61 @@ export default function AlarmEdit({ onNavigate, onNext }: AlarmEditProps) {
         </section>
 
         <section className="space-y-4">
-          <h3 className="font-bold text-lg px-2 text-on-surface">반복 요일</h3>
-          <div className="flex justify-between items-center gap-2">
-            {dayOptions.map(day => (
-              <button 
-                key={day}
-                onClick={() => handleDayToggle(day)}
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all bouncy",
-                  selectedDays.includes(day) 
-                    ? "bg-primary text-on-primary shadow-[0_4px_12px_rgba(224,64,160,0.3)]" 
-                    : "bg-surface-container-highest text-on-surface-variant"
-                )}
-              >
-                {day}
-              </button>
-            ))}
+          <div className="flex items-center justify-between px-2">
+            <h3 className="font-bold text-lg text-on-surface">알람 주기</h3>
+            <div className="flex bg-surface-container rounded-full p-1 border border-outline-variant/30">
+                <button 
+                    onClick={() => setIsRecurring(true)}
+                    className={cn(
+                        "px-4 py-1.5 rounded-full text-xs font-black transition-all",
+                        isRecurring ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:text-on-surface"
+                    )}
+                >
+                    요일 반복
+                </button>
+                <button 
+                    onClick={() => setIsRecurring(false)}
+                    className={cn(
+                        "px-4 py-1.5 rounded-full text-xs font-black transition-all",
+                        !isRecurring ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:text-on-surface"
+                    )}
+                >
+                    날짜 지정
+                </button>
+            </div>
           </div>
+          
+          {isRecurring ? (
+            <div className="flex justify-between items-center gap-2 px-1">
+              {dayOptions.map(day => (
+                <button 
+                  key={day}
+                  onClick={() => handleDayToggle(day)}
+                  className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all bouncy",
+                    selectedDays.includes(day) 
+                      ? "bg-primary text-on-primary shadow-[0_4px_12px_rgba(224,64,160,0.3)]" 
+                      : "bg-surface-container-highest text-on-surface-variant"
+                  )}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none group-focus-within:text-primary transition-colors">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <input 
+                type="date"
+                min={new Date().toISOString().split('T')[0]}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full bg-surface-container rounded-xl py-4 pl-12 pr-4 font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent focus:border-primary/20"
+              />
+            </div>
+          )}
         </section>
 
         <section className="space-y-4">

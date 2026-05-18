@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Dashboard from './screens/Dashboard';
 import AlarmEdit from './screens/AlarmEdit';
 import MissionSelect from './screens/MissionSelect';
@@ -7,6 +7,9 @@ import History from './screens/History';
 import Settings from './screens/Settings';
 import LoginScreen from './screens/LoginScreen';
 import { AuthProvider, useAuth } from './lib/AuthContext';
+import { db } from './lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { AlarmData } from './lib/alarms';
 
 export type Screen = 'dashboard' | 'alarm-edit' | 'mission-select' | 'mission-execute' | 'history' | 'settings';
 export type MissionType = 'step' | 'math' | 'shake' | 'puzzle';
@@ -14,6 +17,7 @@ export type MissionType = 'step' | 'math' | 'shake' | 'puzzle';
 export interface PendingAlarm {
   time: string;
   days: string[];
+  date?: string;
   label: string;
   intensity?: 'low' | 'medium' | 'high';
   volume: number;
@@ -26,6 +30,72 @@ function AppContent() {
   const [pendingAlarm, setPendingAlarm] = useState<PendingAlarm | null>(null);
   const [intensity, setIntensity] = useState<'low' | 'medium' | 'high'>('medium');
   const { user, loading } = useAuth();
+  
+  const [alarms, setAlarms] = useState<AlarmData[]>([]);
+  const triggeredAlarmsRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, 'alarms'), where('userId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedAlarms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AlarmData[];
+      setAlarms(fetchedAlarms);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || alarms.length === 0) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const currentHours = now.getHours().toString().padStart(2, '0');
+      const currentMinutes = now.getMinutes().toString().padStart(2, '0');
+      const timeStr = `${currentHours}:${currentMinutes}`;
+      const dayIndex = now.getDay();
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+      const currentDay = dayNames[dayIndex];
+      const dateStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+
+      for (const alarm of alarms) {
+        if (!alarm.isEnabled) continue;
+
+        // check if this alarm just triggered recently (within 2 minutes)
+        const lastTriggered = triggeredAlarmsRef.current[alarm.id!];
+        if (lastTriggered && now.getTime() - lastTriggered < 2 * 60 * 1000) {
+          continue;
+        }
+
+        const isTimeMatch = alarm.time === timeStr;
+        let isDayMatch = false;
+
+        if (alarm.date) {
+            isDayMatch = alarm.date === dateStr;
+        } else if (alarm.days && alarm.days.length > 0) {
+            isDayMatch = alarm.days.includes(currentDay);
+        }
+
+        if (isTimeMatch && isDayMatch && currentScreen !== 'mission-execute') {
+          triggeredAlarmsRef.current[alarm.id!] = now.getTime();
+          
+          setSelectedMission(alarm.missionType as MissionType);
+          setIntensity(alarm.intensity);
+          setPendingAlarm({
+            time: alarm.time,
+            days: alarm.days,
+            date: alarm.date,
+            label: alarm.label || "기상 알람",
+            volume: alarm.volume,
+            isStormAlarm: alarm.isStormAlarm,
+          });
+          setCurrentScreen('mission-execute');
+          break; // Trigger only one alarm at a time
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [alarms, user, currentScreen]);
 
   if (loading) {
     return (

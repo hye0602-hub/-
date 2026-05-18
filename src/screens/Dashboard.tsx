@@ -299,7 +299,15 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                         {alarm.time}
                       </span>
                       <span className="text-xs font-bold text-secondary bg-secondary-container px-2 py-0.5 rounded-full">
-                        {alarm.days.length === 7 ? "매일" : alarm.days.length === 5 && !alarm.days.includes("토") ? "주중" : "사용자 지정"}
+                        {alarm.date 
+                          ? alarm.date 
+                          : alarm.days.length === 7 
+                            ? "매일" 
+                            : alarm.days.length === 5 && !alarm.days.includes("토") && !alarm.days.includes("일") 
+                              ? "주중" 
+                              : alarm.days.length === 0
+                                ? "한 번"
+                                : "사용자 지정"}
                       </span>
                     </div>
                     <p className="text-xs text-on-surface-variant font-medium">{alarm.label || "알람"}</p>
